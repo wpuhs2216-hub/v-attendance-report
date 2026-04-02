@@ -11,8 +11,57 @@
 <body>
   <header>
     <h1>V出勤報告</h1>
+    <button class="btn-settings" id="btn-settings">⚙</button>
   </header>
-  <main id="app"></main>
+
+  <main>
+    <!-- 日付 -->
+    <section class="section">
+      <input type="date" id="report-date" />
+    </section>
+
+    <!-- 人数のみ入力 -->
+    <section class="section">
+      <h2>人数入力</h2>
+      <div class="number-inputs" id="number-inputs"></div>
+    </section>
+
+    <!-- 名前振り分け -->
+    <section class="section">
+      <h2>名前振り分け</h2>
+      <div class="member-pool" id="member-pool"></div>
+      <div class="assign-categories" id="assign-categories"></div>
+    </section>
+
+    <!-- プレビュー & コピー -->
+    <section class="section">
+      <h2>出力プレビュー</h2>
+      <pre class="preview" id="preview"></pre>
+      <button class="btn-copy" id="btn-copy">コピー</button>
+    </section>
+  </main>
+
+  <!-- カテゴリ選択ポップアップ -->
+  <div class="cat-select-overlay" id="cat-select">
+    <div class="cat-select-list">
+      <h3 id="cat-select-name"></h3>
+      <div id="cat-select-buttons"></div>
+    </div>
+  </div>
+
+  <!-- 名前管理モーダル -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal">
+      <h3>メンバー管理</h3>
+      <div class="member-add">
+        <input type="text" id="new-member-name" placeholder="名前を入力" />
+        <button class="btn-add" id="btn-add-member">追加</button>
+      </div>
+      <div class="member-list" id="member-manage-list"></div>
+      <button class="btn-close" id="btn-close-settings">閉じる</button>
+    </div>
+  </div>
+
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
