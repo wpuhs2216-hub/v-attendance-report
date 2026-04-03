@@ -69,7 +69,8 @@
   <script type="module" src="/src/main.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js');
+      // updateViaCache: 'none' でSW自体のHTTPキャッシュをバイパスし、常に最新チェック
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' });
     }
   </script>
 </body>
