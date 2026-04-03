@@ -23,20 +23,18 @@
   <main>
     <!-- 日付 -->
     <section class="section">
-      <input type="date" id="report-date" />
+      <div class="date-section">
+        <span class="date-label">報告日</span>
+        <input type="date" id="report-date" />
+      </div>
     </section>
 
-    <!-- 人数のみ入力 -->
+    <!-- キャスト一覧 + 振り分け + 人数入力 -->
     <section class="section">
-      <h2>人数入力</h2>
-      <div class="number-inputs" id="number-inputs"></div>
-    </section>
-
-    <!-- 名前振り分け -->
-    <section class="section">
-      <h2>名前振り分け</h2>
+      <h2>キャスト一覧</h2>
       <div class="member-pool" id="member-pool"></div>
       <div class="assign-categories" id="assign-categories"></div>
+      <div class="number-inputs" id="number-inputs"></div>
     </section>
 
     <!-- プレビュー & コピー -->

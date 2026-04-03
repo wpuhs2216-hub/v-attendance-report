@@ -3,6 +3,7 @@ const MEMBERS_KEY = 'v-report-members';
 const DEFAULT_MEMBERS = [
   '祐也', '迅', 'ちんすこう', 'クロム', '夏目',
   '雅', '寿里', 'はると', 'スバル', '琥珀', '狼恋',
+  'TO-YA', 'ルイ', '湊', '宗', '音羽', 'ライト',
 ];
 
 export function loadMembers() {
@@ -30,4 +31,28 @@ export function removeMember(name) {
   const members = loadMembers().filter((m) => m !== name);
   saveMembers(members);
   return members;
+}
+
+// メンバー非表示リスト
+const HIDDEN_KEY = 'v-report-hidden';
+
+export function loadHidden() {
+  const raw = localStorage.getItem(HIDDEN_KEY);
+  return raw ? JSON.parse(raw) : [];
+}
+
+export function saveHidden(hidden) {
+  localStorage.setItem(HIDDEN_KEY, JSON.stringify(hidden));
+}
+
+// 入力データの永続化
+const INPUT_KEY = 'v-report-input';
+
+export function loadInputData() {
+  const raw = localStorage.getItem(INPUT_KEY);
+  return raw ? JSON.parse(raw) : null;
+}
+
+export function saveInputData(data) {
+  localStorage.setItem(INPUT_KEY, JSON.stringify(data));
 }
