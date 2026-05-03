@@ -170,6 +170,7 @@ input[type="date"]:focus {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   padding: 10px 14px;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
 
 .assign-cat-header {
@@ -201,23 +202,79 @@ input[type="date"]:focus {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  min-height: 8px;
+  min-height: 28px;
+  align-items: center;
 }
 
 .assigned-chip {
-  padding: 4px 12px;
+  padding: 7px 14px;
   background: rgba(100, 200, 100, 0.15);
-  border: 1px solid rgba(100, 200, 100, 0.3);
-  border-radius: 16px;
-  font-size: 12px;
+  border: 1px solid rgba(100, 200, 100, 0.35);
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 700;
   color: #8f8;
-  cursor: pointer;
+  cursor: grab;
   user-select: none;
+  touch-action: none;
+  -webkit-user-drag: none;
+  transition: transform 0.1s;
 }
 
 .assigned-chip:active {
-  background: rgba(220, 53, 69, 0.2);
-  color: #dc3545;
+  cursor: grabbing;
+  transform: scale(0.95);
+}
+
+.assigned-chip.dragging-source {
+  opacity: 0.25;
+}
+
+/* ドラッグ中のゴースト */
+.drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.92;
+  transform: scale(1.12) rotate(-2deg);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.7);
+  border-color: #d4af37 !important;
+  color: #d4af37 !important;
+  background: rgba(212, 175, 55, 0.25) !important;
+}
+
+/* ドロップ対象のハイライト */
+.assign-cat.drop-target {
+  border-color: #d4af37;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.05));
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.4), 0 4px 14px rgba(212, 175, 55, 0.2);
+}
+
+/* 空カテゴリのドロップヒント */
+.assign-cat-names:empty::before {
+  content: "ここにドラッグ";
+  color: #444;
+  font-size: 11px;
+  padding: 2px 0;
+  display: inline-block;
+  font-style: italic;
+}
+
+/* オープンメンバー（デフォルト）の強調 */
+.assign-cat[data-key="open"] {
+  border-color: rgba(212, 175, 55, 0.35);
+  background: linear-gradient(135deg, #1f1f3a, #1a1a2e);
+}
+
+.assign-cat[data-key="open"] .assign-cat-header span:first-child {
+  color: #d4af37;
+  font-weight: 700;
+}
+
+/* multi カテゴリ（重複可）の差別化 */
+.assign-cat[data-key="shift"],
+.assign-cat[data-key="newEntry"] {
+  border-left: 3px solid rgba(100, 150, 220, 0.5);
 }
 
 /* カテゴリ選択ポップアップ */

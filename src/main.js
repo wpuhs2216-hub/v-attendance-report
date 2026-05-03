@@ -105,6 +105,45 @@ catSelect.addEventListener('click', (e) => {
   if (e.target === catSelect) closeCatSelect();
 });
 
+// === 移動ダイアログ（チップタップで開く） ===
+
+function openMoveDialog(name, fromCatKey) {
+  catSelectName.textContent = `「${name}」を移動`;
+  const targetCats = nameCategories.filter((c) => c.key !== fromCatKey);
+  catSelectButtons.innerHTML = targetCats.map((cat) => {
+    const tag = cat.multi ? '＋' : '→';
+    return `<button class="cat-select-btn" data-key="${cat.key}">${tag} ${cat.label}</button>`;
+  }).join('');
+  catSelectButtons.querySelectorAll('.cat-select-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      moveToCategory(name, fromCatKey, btn.dataset.key);
+      closeCatSelect();
+      renderAll();
+    });
+  });
+  catSelect.classList.add('active');
+}
+
+// === カテゴリ間移動 ===
+// fromCatKey が null なら新規追加、from→to でカテゴリ移動
+function moveToCategory(name, fromCatKey, toCatKey) {
+  const toCat = nameCategories.find((c) => c.key === toCatKey);
+  if (!toCat) return;
+  if (fromCatKey && fromCatKey !== toCatKey && assignments[fromCatKey]) {
+    assignments[fromCatKey] = assignments[fromCatKey].filter((n) => n !== name);
+  }
+  if (!toCat.multi) {
+    for (const otherCat of nameCategories) {
+      if (otherCat.key === toCatKey || otherCat.multi) continue;
+      assignments[otherCat.key] = assignments[otherCat.key].filter((n) => n !== name);
+    }
+  }
+  if (!assignments[toCatKey].includes(name)) {
+    assignments[toCatKey].push(name);
+  }
+  ensureInOpen(name);
+}
+
 // === チェックボックスピッカー（カテゴリタップで開く） ===
 
 function openCheckboxPicker(catKey) {
@@ -199,16 +238,109 @@ function renderAssignCategories() {
     });
   });
 
-  // 割り当て済みチップのタップで解除
+  // 割り当て済みチップ：タップで移動ダイアログ／解除、ドラッグで他カテゴリへ移動
   assignCategories.querySelectorAll('.assigned-chip').forEach((chip) => {
-    chip.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const cat = chip.dataset.cat;
-      const name = chip.dataset.name;
-      assignments[cat] = assignments[cat].filter((n) => n !== name);
-      ensureInOpen(name);
+    setupChipDragAndTap(chip, chip.dataset.cat, chip.dataset.name);
+  });
+}
+
+// === チップのドラッグ & タップ ===
+
+let dragState = null;
+const DRAG_THRESHOLD = 8;
+
+function setupChipDragAndTap(chip, fromCatKey, name) {
+  chip.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    dragState = {
+      pointerId: e.pointerId,
+      chip,
+      fromCatKey,
+      name,
+      startX: e.clientX,
+      startY: e.clientY,
+      dragging: false,
+      ghost: null,
+      offsetX: 0,
+      offsetY: 0,
+      lastTarget: null,
+    };
+    try { chip.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+
+  chip.addEventListener('pointermove', (e) => {
+    if (!dragState || dragState.pointerId !== e.pointerId) return;
+    const dx = e.clientX - dragState.startX;
+    const dy = e.clientY - dragState.startY;
+    if (!dragState.dragging) {
+      if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+      const rect = chip.getBoundingClientRect();
+      const ghost = chip.cloneNode(true);
+      ghost.classList.add('drag-ghost');
+      ghost.style.left = rect.left + 'px';
+      ghost.style.top = rect.top + 'px';
+      ghost.style.width = rect.width + 'px';
+      document.body.appendChild(ghost);
+      dragState.ghost = ghost;
+      dragState.offsetX = dragState.startX - rect.left;
+      dragState.offsetY = dragState.startY - rect.top;
+      chip.classList.add('dragging-source');
+      dragState.dragging = true;
+    }
+    dragState.ghost.style.left = (e.clientX - dragState.offsetX) + 'px';
+    dragState.ghost.style.top = (e.clientY - dragState.offsetY) + 'px';
+    dragState.ghost.style.visibility = 'hidden';
+    const elUnder = document.elementFromPoint(e.clientX, e.clientY);
+    dragState.ghost.style.visibility = '';
+    const targetEl = elUnder ? elUnder.closest('.assign-cat') : null;
+    if (dragState.lastTarget && dragState.lastTarget !== targetEl) {
+      dragState.lastTarget.classList.remove('drop-target');
+    }
+    if (targetEl && targetEl !== dragState.lastTarget) {
+      targetEl.classList.add('drop-target');
+    }
+    dragState.lastTarget = targetEl;
+  });
+
+  const finishDrag = (commit) => {
+    if (!dragState) return;
+    const wasDrag = dragState.dragging;
+    if (wasDrag) {
+      if (commit && dragState.lastTarget) {
+        const toCatKey = dragState.lastTarget.dataset.key;
+        if (toCatKey && toCatKey !== dragState.fromCatKey) {
+          moveToCategory(dragState.name, dragState.fromCatKey, toCatKey);
+        }
+      }
+      if (dragState.ghost) dragState.ghost.remove();
+      if (dragState.lastTarget) dragState.lastTarget.classList.remove('drop-target');
+      dragState.chip.classList.remove('dragging-source');
+      dragState = null;
       renderAll();
-    });
+      return;
+    }
+    // タップ扱い
+    const tapName = dragState.name;
+    const tapFrom = dragState.fromCatKey;
+    dragState = null;
+    if (tapFrom === 'open') {
+      openMoveDialog(tapName, 'open');
+    } else {
+      assignments[tapFrom] = assignments[tapFrom].filter((n) => n !== tapName);
+      ensureInOpen(tapName);
+      renderAll();
+    }
+  };
+
+  chip.addEventListener('pointerup', (e) => {
+    if (!dragState || dragState.pointerId !== e.pointerId) return;
+    finishDrag(true);
+  });
+
+  chip.addEventListener('pointercancel', (e) => {
+    if (!dragState || dragState.pointerId !== e.pointerId) return;
+    finishDrag(false);
   });
 }
 
