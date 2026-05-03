@@ -380,6 +380,10 @@ input[type="date"]:focus {
   color: #e0e0e0;
 }
 
+.cb-row[data-role="staff"] > span:nth-of-type(1) {
+  color: #8ab4ff;
+}
+
 .cb-hint {
   margin-left: auto;
   font-size: 11px;
@@ -567,19 +571,94 @@ input[type="date"]:focus {
 .member-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   margin-bottom: 16px;
-  max-height: 300px;
+  max-height: 360px;
   overflow-y: auto;
+}
+
+.member-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.member-section-title {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #888;
+  padding: 6px 4px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 4px;
+}
+
+.member-section[data-role="staff"] .member-section-title {
+  color: #8ab4ff;
+}
+
+.member-section[data-role="player"] .member-section-title {
+  color: #8f8;
+}
+
+.member-section-empty {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #555;
+  font-style: italic;
+}
+
+.drag-handle {
+  cursor: grab;
+  color: #666;
+  font-size: 16px;
+  padding: 0 6px;
+  user-select: none;
+  touch-action: none;
+  -webkit-user-drag: none;
+  flex-shrink: 0;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+  color: #d4af37;
+}
+
+.row-drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.92;
+  background: #1a1a2e;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  border-radius: 6px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.7);
+}
+
+.row-placeholder {
+  background: rgba(212, 175, 55, 0.08) !important;
+  border: 1px dashed rgba(212, 175, 55, 0.4) !important;
+}
+
+.row-placeholder > * {
+  visibility: hidden;
 }
 
 .member-manage-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 8px 8px 8px 4px;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 6px;
+}
+
+.member-manage-row .member-manage-name {
+  flex: 1;
+  min-width: 0;
 }
 
 .member-manage-row.hidden-member {
