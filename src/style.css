@@ -514,6 +514,39 @@ input[type="date"]:focus {
   font-family: inherit;
 }
 
+.backup-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.btn-backup,
+.btn-restore {
+  flex: 1;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn-backup {
+  background: rgba(212, 175, 55, 0.15);
+  color: #d4af37;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.btn-restore {
+  background: rgba(100, 150, 220, 0.15);
+  color: #6c9bdc;
+  border: 1px solid rgba(100, 150, 220, 0.3);
+}
+
+.btn-backup:active,
+.btn-restore:active {
+  opacity: 0.8;
+}
+
 .btn-close {
   width: 100%;
   padding: 12px;

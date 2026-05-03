@@ -1,4 +1,4 @@
-import { loadMembers, saveMembers, addMember, removeMember, loadInputData, saveInputData, loadHidden, saveHidden } from './store.js';
+import { loadMembers, saveMembers, addMember, removeMember, loadInputData, saveInputData, loadHidden, saveHidden, exportBackup, importBackup } from './store.js';
 import { CATEGORIES, generateReport } from './template.js';
 
 // 状態
@@ -24,6 +24,9 @@ const newMemberName = document.getElementById('new-member-name');
 const btnAddMember = document.getElementById('btn-add-member');
 const memberManageList = document.getElementById('member-manage-list');
 const btnCloseSettings = document.getElementById('btn-close-settings');
+const btnBackup = document.getElementById('btn-backup');
+const btnRestore = document.getElementById('btn-restore');
+const restoreFile = document.getElementById('restore-file');
 
 // 初期化: 今日の日付をセット（ローカルタイムゾーン）
 const today = new Date();
@@ -364,6 +367,42 @@ function doAddMember() {
 btnAddMember.addEventListener('click', doAddMember);
 newMemberName.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') doAddMember();
+});
+
+// === バックアップ / リストア ===
+
+btnBackup.addEventListener('click', () => {
+  const backup = exportBackup();
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  a.download = `v-attendance-backup-${ts}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+btnRestore.addEventListener('click', () => {
+  restoreFile.value = '';
+  restoreFile.click();
+});
+
+restoreFile.addEventListener('change', async () => {
+  const file = restoreFile.files && restoreFile.files[0];
+  if (!file) return;
+  if (!confirm('現在のメンバー・非表示・入力データを上書きします。よろしいですか？')) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    importBackup(data);
+    alert('リストアしました。アプリを再読み込みします。');
+    location.reload();
+  } catch (err) {
+    alert(`リストアに失敗しました: ${err.message || err}`);
+  }
 });
 
 // === 初期描画 ===
