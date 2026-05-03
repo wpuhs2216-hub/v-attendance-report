@@ -221,6 +221,12 @@ input[type="date"]:focus {
   transition: transform 0.1s;
 }
 
+.assigned-chip[data-role="staff"] {
+  background: rgba(120, 170, 255, 0.18);
+  border-color: rgba(120, 170, 255, 0.45);
+  color: #8ab4ff;
+}
+
 .assigned-chip:active {
   cursor: grabbing;
   transform: scale(0.95);
@@ -237,10 +243,7 @@ input[type="date"]:focus {
   z-index: 1000;
   opacity: 0.92;
   transform: scale(1.12) rotate(-2deg);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.7);
-  border-color: #d4af37 !important;
-  color: #d4af37 !important;
-  background: rgba(212, 175, 55, 0.25) !important;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(212, 175, 55, 0.6);
 }
 
 /* ドロップ対象のハイライト */
@@ -547,6 +550,30 @@ input[type="date"]:focus {
   font-size: 12px;
   cursor: pointer;
   font-family: inherit;
+}
+
+.btn-toggle-role {
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn-toggle-role[data-role="player"] {
+  background: rgba(100, 200, 100, 0.15);
+  color: #8f8;
+  border: 1px solid rgba(100, 200, 100, 0.3);
+}
+
+.btn-toggle-role[data-role="staff"] {
+  background: rgba(120, 170, 255, 0.18);
+  color: #8ab4ff;
+  border: 1px solid rgba(120, 170, 255, 0.4);
+}
+
+.member-manage-name[data-role="staff"] {
+  color: #8ab4ff;
 }
 
 .btn-remove {
