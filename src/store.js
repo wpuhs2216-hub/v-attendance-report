@@ -2,10 +2,13 @@ const MEMBERS_KEY = 'v-report-members';
 
 const DEFAULT_MEMBERS = [
   '祐也', '迅', 'ちんすこう', 'クロム',
-  '雅', '寿里', 'はると', 'スバル', '琥珀', '狼恋',
+  '雅', '寿里', 'はると', 'スバル', '狼恋',
   'TO-YA', 'ルイ', '湊', '宗', '音羽', 'ライト',
   'とあ', '紫月', 'けんしん',
 ];
+
+// 初期で運営スタッフとして登録するメンバー
+const DEFAULT_STAFF = ['TO-YA', 'ルイ', '湊', '宗', '狼恋', '音羽', 'ライト'];
 
 export function loadMembers() {
   const raw = localStorage.getItem(MEMBERS_KEY);
@@ -46,6 +49,35 @@ export function saveHidden(hidden) {
   localStorage.setItem(HIDDEN_KEY, JSON.stringify(hidden));
 }
 
+// メンバー役割（player / staff）
+const ROLES_KEY = 'v-report-roles';
+
+export function loadRoles() {
+  const raw = localStorage.getItem(ROLES_KEY);
+  if (!raw) {
+    const initial = {};
+    for (const name of DEFAULT_STAFF) initial[name] = 'staff';
+    saveRoles(initial);
+    return initial;
+  }
+  return JSON.parse(raw);
+}
+
+export function saveRoles(roles) {
+  localStorage.setItem(ROLES_KEY, JSON.stringify(roles));
+}
+
+export function setRole(name, role) {
+  const roles = loadRoles();
+  if (role === 'staff') {
+    roles[name] = 'staff';
+  } else {
+    delete roles[name];
+  }
+  saveRoles(roles);
+  return roles;
+}
+
 // 入力データの永続化
 const INPUT_KEY = 'v-report-input';
 
@@ -69,6 +101,7 @@ export function exportBackup() {
     exportedAt: new Date().toISOString(),
     members: loadMembers(),
     hidden: loadHidden(),
+    roles: loadRoles(),
     input: loadInputData(),
   };
 }
@@ -85,6 +118,13 @@ export function importBackup(data) {
   }
   if (Array.isArray(data.hidden)) {
     saveHidden(data.hidden.filter((m) => typeof m === 'string'));
+  }
+  if (data.roles && typeof data.roles === 'object') {
+    const cleaned = {};
+    for (const [k, v] of Object.entries(data.roles)) {
+      if (typeof k === 'string' && v === 'staff') cleaned[k] = 'staff';
+    }
+    saveRoles(cleaned);
   }
   if (data.input && typeof data.input === 'object') {
     saveInputData(data.input);

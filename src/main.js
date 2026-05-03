@@ -1,10 +1,15 @@
-import { loadMembers, saveMembers, addMember, removeMember, loadInputData, saveInputData, loadHidden, saveHidden, exportBackup, importBackup } from './store.js';
+import { loadMembers, saveMembers, addMember, removeMember, loadInputData, saveInputData, loadHidden, saveHidden, loadRoles, setRole, exportBackup, importBackup } from './store.js';
 import { CATEGORIES, generateReport } from './template.js';
 
 // 状態
 let assignments = {};  // { categoryKey: [名前, ...] }
 let members = loadMembers();
 let hiddenMembers = loadHidden();
+let roles = loadRoles();
+
+function getRole(name) {
+  return roles[name] === 'staff' ? 'staff' : 'player';
+}
 
 // DOM要素
 const reportDate = document.getElementById('report-date');
@@ -218,7 +223,7 @@ function findExclusiveCat(name, excludeKey) {
 function renderAssignCategories() {
   assignCategories.innerHTML = nameCategories.map((cat) => {
     const names = assignments[cat.key];
-    const chips = names.map((n) => `<span class="assigned-chip" data-cat="${cat.key}" data-name="${n}">${n}</span>`).join('');
+    const chips = names.map((n) => `<span class="assigned-chip" data-cat="${cat.key}" data-name="${n}" data-role="${getRole(n)}">${n}</span>`).join('');
     return `
       <div class="assign-cat" data-key="${cat.key}">
         <div class="assign-cat-header">
@@ -443,16 +448,28 @@ settingsModal.addEventListener('click', (e) => {
 function renderMemberManageList() {
   memberManageList.innerHTML = members.map((name) => {
     const isHidden = hiddenMembers.includes(name);
+    const role = getRole(name);
+    const roleLabel = role === 'staff' ? '運営' : 'プレイヤー';
     return `
       <div class="member-manage-row ${isHidden ? 'hidden-member' : ''}">
-        <span>${name}</span>
+        <span class="member-manage-name" data-role="${role}">${name}</span>
         <div class="member-manage-actions">
+          <button class="btn-toggle-role" data-name="${name}" data-role="${role}">${roleLabel}</button>
           <button class="btn-toggle-vis" data-name="${name}">${isHidden ? '表示' : '非表示'}</button>
           <button class="btn-remove" data-name="${name}">削除</button>
         </div>
       </div>
     `;
   }).join('');
+
+  memberManageList.querySelectorAll('.btn-toggle-role').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.name;
+      const next = getRole(name) === 'staff' ? 'player' : 'staff';
+      roles = setRole(name, next);
+      renderMemberManageList();
+    });
+  });
 
   memberManageList.querySelectorAll('.btn-remove').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -461,6 +478,7 @@ function renderMemberManageList() {
       members = removeMember(name);
       hiddenMembers = hiddenMembers.filter((n) => n !== name);
       saveHidden(hiddenMembers);
+      roles = setRole(name, 'player');
       for (const key of Object.keys(assignments)) {
         assignments[key] = assignments[key].filter((n) => n !== name);
       }
