@@ -158,36 +158,6 @@ input[type="date"]:focus {
   border-color: rgba(212, 175, 55, 0.5);
 }
 
-/* 名前プール（未割り当て） */
-.member-pool {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
-  min-height: 40px;
-  padding: 10px;
-  background: #1a1a2e;
-  border-radius: 8px;
-  border: 1px dashed rgba(255, 255, 255, 0.12);
-}
-
-.member-chip {
-  padding: 6px 14px;
-  background: rgba(212, 175, 55, 0.15);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  border-radius: 20px;
-  font-size: 13px;
-  color: #d4af37;
-  cursor: pointer;
-  transition: all 0.15s;
-  user-select: none;
-}
-
-.member-chip:active {
-  background: rgba(212, 175, 55, 0.3);
-  transform: scale(0.95);
-}
-
 /* カテゴリ振り分けエリア */
 .assign-categories {
   display: flex;
@@ -368,19 +338,28 @@ input[type="date"]:focus {
   overflow-y: auto;
 }
 
-.btn-copy {
-  width: 100%;
+.action-row {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-copy,
+.btn-share {
+  flex: 1;
   padding: 14px;
-  background: linear-gradient(135deg, #d4af37, #b8941e);
-  color: #0a0a0a;
   border: none;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
   transition: opacity 0.2s;
+}
+
+.btn-copy {
+  background: linear-gradient(135deg, #d4af37, #b8941e);
+  color: #0a0a0a;
 }
 
 .btn-copy:active {
@@ -390,6 +369,15 @@ input[type="date"]:focus {
 .btn-copy.copied {
   background: #28a745;
   color: #fff;
+}
+
+.btn-share {
+  background: linear-gradient(135deg, #06c755, #059e44);
+  color: #fff;
+}
+
+.btn-share:active {
+  opacity: 0.8;
 }
 
 /* 設定モーダル */
@@ -524,6 +512,39 @@ input[type="date"]:focus {
   font-size: 14px;
   cursor: pointer;
   font-family: inherit;
+}
+
+.backup-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.btn-backup,
+.btn-restore {
+  flex: 1;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn-backup {
+  background: rgba(212, 175, 55, 0.15);
+  color: #d4af37;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.btn-restore {
+  background: rgba(100, 150, 220, 0.15);
+  color: #6c9bdc;
+  border: 1px solid rgba(100, 150, 220, 0.3);
+}
+
+.btn-backup:active,
+.btn-restore:active {
+  opacity: 0.8;
 }
 
 .btn-close {

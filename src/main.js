@@ -1,4 +1,4 @@
-import { loadMembers, saveMembers, addMember, removeMember, loadInputData, saveInputData, loadHidden, saveHidden } from './store.js';
+import { loadMembers, saveMembers, addMember, removeMember, loadInputData, saveInputData, loadHidden, saveHidden, exportBackup, importBackup } from './store.js';
 import { CATEGORIES, generateReport } from './template.js';
 
 // 状態
@@ -9,10 +9,10 @@ let hiddenMembers = loadHidden();
 // DOM要素
 const reportDate = document.getElementById('report-date');
 const numberInputs = document.getElementById('number-inputs');
-const memberPool = document.getElementById('member-pool');
 const assignCategories = document.getElementById('assign-categories');
 const preview = document.getElementById('preview');
 const btnCopy = document.getElementById('btn-copy');
+const btnShare = document.getElementById('btn-share');
 const catSelect = document.getElementById('cat-select');
 const catSelectName = document.getElementById('cat-select-name');
 const catSelectButtons = document.getElementById('cat-select-buttons');
@@ -24,6 +24,9 @@ const newMemberName = document.getElementById('new-member-name');
 const btnAddMember = document.getElementById('btn-add-member');
 const memberManageList = document.getElementById('member-manage-list');
 const btnCloseSettings = document.getElementById('btn-close-settings');
+const btnBackup = document.getElementById('btn-backup');
+const btnRestore = document.getElementById('btn-restore');
+const restoreFile = document.getElementById('restore-file');
 
 // 初期化: 今日の日付をセット（ローカルタイムゾーン）
 const today = new Date();
@@ -39,6 +42,29 @@ nameCategories.forEach((c) => { assignments[c.key] = []; });
 
 function visibleMembers() {
   return members.filter((m) => !hiddenMembers.includes(m));
+}
+
+// === オープンメンバーをデフォルトとする正規化 ===
+// どの排他カテゴリ（multi以外、open以外）にも属さない可視メンバーを open に追加する
+function ensureInOpen(name) {
+  if (!visibleMembers().includes(name)) return;
+  for (const cat of nameCategories) {
+    if (cat.multi || cat.key === 'open') continue;
+    if (assignments[cat.key].includes(name)) return;
+  }
+  if (!assignments.open.includes(name)) {
+    assignments.open.push(name);
+  }
+}
+
+function normalizeAllOpen() {
+  for (const name of visibleMembers()) {
+    ensureInOpen(name);
+  }
+  // 非表示・削除済みメンバーは全カテゴリから除外
+  for (const cat of nameCategories) {
+    assignments[cat.key] = assignments[cat.key].filter((n) => visibleMembers().includes(n));
+  }
 }
 
 // === 人数入力セクション ===
@@ -69,56 +95,10 @@ function renderNumberInputs() {
   });
 }
 
-// === 名前プール（未割り当て表示のみ、タップでカテゴリ選択） ===
-
-// 排他カテゴリ（multi以外）に割り当て済みの名前一覧
-function getExclusiveAssigned() {
-  const names = [];
-  for (const cat of nameCategories) {
-    if (cat.multi) continue;
-    names.push(...(assignments[cat.key] || []));
-  }
-  return names;
-}
-
-function renderMemberPool() {
-  const exclusiveAssigned = getExclusiveAssigned();
-  const unassigned = visibleMembers().filter((m) => !exclusiveAssigned.includes(m));
-
-  memberPool.innerHTML = unassigned.length > 0
-    ? unassigned.map((name) => `<div class="member-chip" data-name="${name}">${name}</div>`).join('')
-    : '<span style="color:#666;font-size:12px">全員振り分け済み</span>';
-
-  memberPool.querySelectorAll('.member-chip').forEach((chip) => {
-    chip.addEventListener('click', () => openCatSelect(chip.dataset.name));
-  });
-}
-
-// === カテゴリ選択ポップアップ（プールからの振り分け用） ===
-
-let selectingName = '';
-
-function openCatSelect(name) {
-  selectingName = name;
-  catSelectName.textContent = `「${name}」の振り分け先`;
-  catSelectButtons.innerHTML = nameCategories.map((cat) => `
-    <button class="cat-select-btn" data-key="${cat.key}">${cat.label}</button>
-  `).join('');
-
-  catSelectButtons.querySelectorAll('.cat-select-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      assignments[btn.dataset.key].push(selectingName);
-      closeCatSelect();
-      renderAll();
-    });
-  });
-
-  catSelect.classList.add('active');
-}
+// === カテゴリ選択ポップアップの開閉 ===
 
 function closeCatSelect() {
   catSelect.classList.remove('active');
-  selectingName = '';
 }
 
 catSelect.addEventListener('click', (e) => {
@@ -170,8 +150,8 @@ function openCheckboxPicker(catKey) {
         }
       } else {
         assignments[catKey] = assignments[catKey].filter((n) => n !== name);
+        ensureInOpen(name);
       }
-      renderMemberPool();
       renderAssignCategories();
       updatePreview();
     });
@@ -226,6 +206,7 @@ function renderAssignCategories() {
       const cat = chip.dataset.cat;
       const name = chip.dataset.name;
       assignments[cat] = assignments[cat].filter((n) => n !== name);
+      ensureInOpen(name);
       renderAll();
     });
   });
@@ -234,7 +215,6 @@ function renderAssignCategories() {
 // === まとめて再描画 ===
 
 function renderAll() {
-  renderMemberPool();
   renderAssignCategories();
   updatePreview();
 }
@@ -286,6 +266,24 @@ btnCopy.addEventListener('click', async () => {
       btnCopy.classList.remove('copied');
     }, 2000);
   }
+});
+
+// === シェア（LINE優先、Web Share APIフォールバック） ===
+// ※ LINEは特定グループへの直接送信は不可。共有シートで宛先を都度選択する仕様。
+btnShare.addEventListener('click', async () => {
+  const text = preview.textContent;
+  // 端末が対応していれば共有シートを開く（LINEを含む任意のアプリを選択可能）
+  if (navigator.share) {
+    try {
+      await navigator.share({ text });
+      return;
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
+    }
+  }
+  // フォールバック: LINEのテキスト共有URLを開く
+  const url = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
+  window.open(url, '_blank');
 });
 
 // 日付変更でプレビュー更新
@@ -343,13 +341,15 @@ function renderMemberManageList() {
       const name = btn.dataset.name;
       if (hiddenMembers.includes(name)) {
         hiddenMembers = hiddenMembers.filter((n) => n !== name);
+        saveHidden(hiddenMembers);
+        ensureInOpen(name);
       } else {
         hiddenMembers.push(name);
         for (const key of Object.keys(assignments)) {
           assignments[key] = assignments[key].filter((n) => n !== name);
         }
+        saveHidden(hiddenMembers);
       }
-      saveHidden(hiddenMembers);
       renderMemberManageList();
     });
   });
@@ -360,12 +360,49 @@ function doAddMember() {
   if (!name) return;
   members = addMember(name);
   newMemberName.value = '';
+  ensureInOpen(name);
   renderMemberManageList();
 }
 
 btnAddMember.addEventListener('click', doAddMember);
 newMemberName.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') doAddMember();
+});
+
+// === バックアップ / リストア ===
+
+btnBackup.addEventListener('click', () => {
+  const backup = exportBackup();
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  a.download = `v-attendance-backup-${ts}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+btnRestore.addEventListener('click', () => {
+  restoreFile.value = '';
+  restoreFile.click();
+});
+
+restoreFile.addEventListener('change', async () => {
+  const file = restoreFile.files && restoreFile.files[0];
+  if (!file) return;
+  if (!confirm('現在のメンバー・非表示・入力データを上書きします。よろしいですか？')) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    importBackup(data);
+    alert('リストアしました。アプリを再読み込みします。');
+    location.reload();
+  } catch (err) {
+    alert(`リストアに失敗しました: ${err.message || err}`);
+  }
 });
 
 // === 初期描画 ===
@@ -390,4 +427,5 @@ if (saved) {
   }
 }
 
+normalizeAllOpen();
 renderAll();
