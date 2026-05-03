@@ -157,9 +157,10 @@ function openCheckboxPicker(catKey) {
   const cat = nameCategories.find((c) => c.key === catKey);
   const currentNames = assignments[catKey];
 
-  // 同伴は運営スタッフを選択肢から除外
+  // 同伴・スライドは運営スタッフを選択肢から除外
   const baseAvailable = visibleMembers();
-  const available = catKey === 'douhan'
+  const playerOnlyCats = new Set(['douhan', 'slide']);
+  const available = playerOnlyCats.has(catKey)
     ? baseAvailable.filter((n) => getRole(n) !== 'staff')
     : baseAvailable;
   // プレイヤーを先、運営を後でグループ化
