@@ -157,21 +157,26 @@ function openCheckboxPicker(catKey) {
   const cat = nameCategories.find((c) => c.key === catKey);
   const currentNames = assignments[catKey];
 
-  // 全メンバーを表示（他カテゴリ割り当て済みも含む）
-  const available = visibleMembers();
+  // 同伴は運営スタッフを選択肢から除外
+  const baseAvailable = visibleMembers();
+  const available = catKey === 'douhan'
+    ? baseAvailable.filter((n) => getRole(n) !== 'staff')
+    : baseAvailable;
+  // プレイヤーを先、運営を後でグループ化
+  const sortedAvailable = sortByRole(available);
 
   catSelectName.textContent = cat.label;
 
-  if (available.length === 0) {
+  if (sortedAvailable.length === 0) {
     catSelectButtons.innerHTML = '<div style="color:#666;font-size:13px;text-align:center;padding:12px">選択可能なメンバーがいません</div>';
   } else {
-    // 他の排他カテゴリに割り当て済みか調べる
-    catSelectButtons.innerHTML = available.map((name) => {
+    catSelectButtons.innerHTML = sortedAvailable.map((name) => {
       const checked = currentNames.includes(name) ? 'checked' : '';
       const otherCat = findExclusiveCat(name, catKey);
       const hint = otherCat ? `<span class="cb-hint">${otherCat.label}</span>` : '';
+      const role = getRole(name);
       return `
-        <label class="cb-row">
+        <label class="cb-row" data-role="${role}">
           <input type="checkbox" data-name="${name}" ${checked} />
           <span>${name}</span>${hint}
         </label>
@@ -212,12 +217,20 @@ function openCheckboxPicker(catKey) {
 }
 
 // 指定メンバーが他の排他カテゴリに割り当て済みならそのカテゴリを返す
+// オープンメンバーはデフォルト扱いなのでヒントから除外
 function findExclusiveCat(name, excludeKey) {
   for (const cat of nameCategories) {
-    if (cat.key === excludeKey || cat.multi) continue;
+    if (cat.key === excludeKey || cat.multi || cat.key === 'open') continue;
     if (assignments[cat.key].includes(name)) return cat;
   }
   return null;
+}
+
+// プレイヤー → 運営 の順でソート（メンバー配列の順序を保つ）
+function sortByRole(names) {
+  const players = names.filter((n) => getRole(n) !== 'staff');
+  const staffs = names.filter((n) => getRole(n) === 'staff');
+  return [...players, ...staffs];
 }
 
 // === カテゴリ別振り分け表示 ===
@@ -225,8 +238,16 @@ function findExclusiveCat(name, excludeKey) {
 function renderAssignCategories() {
   assignCategories.innerHTML = nameCategories.map((cat) => {
     const names = assignments[cat.key];
-    const chipNames = hideStaff ? names.filter((n) => getRole(n) !== 'staff') : names;
-    const chips = chipNames.map((n) => `<span class="assigned-chip" data-cat="${cat.key}" data-name="${n}" data-role="${getRole(n)}">${n}</span>`).join('');
+    const filteredNames = hideStaff ? names.filter((n) => getRole(n) !== 'staff') : names;
+    // メンバー配列の順序を維持しつつプレイヤー→運営でグループ化
+    const memberOrder = new Map(members.map((m, i) => [m, i]));
+    const sortedNames = [...filteredNames].sort((a, b) => {
+      const ra = getRole(a) === 'staff' ? 1 : 0;
+      const rb = getRole(b) === 'staff' ? 1 : 0;
+      if (ra !== rb) return ra - rb;
+      return (memberOrder.get(a) ?? 0) - (memberOrder.get(b) ?? 0);
+    });
+    const chips = sortedNames.map((n) => `<span class="assigned-chip" data-cat="${cat.key}" data-name="${n}" data-role="${getRole(n)}">${n}</span>`).join('');
     let breakdown = '';
     if (cat.key === 'open') {
       const playerCount = names.filter((n) => getRole(n) !== 'staff').length;
@@ -245,10 +266,11 @@ function renderAssignCategories() {
     `;
   }).join('');
 
-  // カテゴリ行タップでチェックボックスピッカーを開く
+  // カテゴリ行タップでチェックボックスピッカーを開く（オープンメンバーは除外）
   assignCategories.querySelectorAll('.assign-cat-header').forEach((header) => {
     header.addEventListener('click', () => {
       const catKey = header.closest('.assign-cat').dataset.key;
+      if (catKey === 'open') return;
       openCheckboxPicker(catKey);
     });
   });
@@ -359,6 +381,120 @@ function setupChipDragAndTap(chip, fromCatKey, name) {
   });
 }
 
+// === メンバー一覧の並び替え（設定モーダル内） ===
+
+let rowDragState = null;
+
+function setupRowReorder(row) {
+  const handle = row.querySelector('.drag-handle');
+  if (!handle) return;
+
+  handle.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = row.getBoundingClientRect();
+
+    const ghost = row.cloneNode(true);
+    ghost.classList.add('row-drag-ghost');
+    ghost.style.left = rect.left + 'px';
+    ghost.style.top = rect.top + 'px';
+    ghost.style.width = rect.width + 'px';
+    document.body.appendChild(ghost);
+
+    const placeholder = document.createElement('div');
+    placeholder.className = 'member-manage-row row-placeholder';
+    placeholder.dataset.name = row.dataset.name;
+    placeholder.style.height = rect.height + 'px';
+    row.parentNode.replaceChild(placeholder, row);
+
+    rowDragState = {
+      pointerId: e.pointerId,
+      handle,
+      name: row.dataset.name,
+      ghost,
+      placeholder,
+      offsetY: e.clientY - rect.top,
+    };
+    try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+
+  handle.addEventListener('pointermove', (e) => {
+    if (!rowDragState || rowDragState.pointerId !== e.pointerId) return;
+    rowDragState.ghost.style.top = (e.clientY - rowDragState.offsetY) + 'px';
+
+    const allRows = Array.from(memberManageList.querySelectorAll('.member-manage-row'));
+    const others = allRows.filter((r) => r !== rowDragState.placeholder);
+
+    let insertBefore = null;
+    for (const r of others) {
+      const rect = r.getBoundingClientRect();
+      if (e.clientY < rect.top + rect.height / 2) {
+        insertBefore = r;
+        break;
+      }
+    }
+    const ph = rowDragState.placeholder;
+    const targetParent = insertBefore ? insertBefore.parentNode : memberManageList.querySelector('.member-section:last-child');
+    if (insertBefore) {
+      if (ph.nextSibling !== insertBefore) {
+        targetParent.insertBefore(ph, insertBefore);
+      }
+    } else {
+      // 最後尾に挿入（最後のセクションの末尾）
+      const lastSection = memberManageList.querySelector('.member-section:last-child');
+      if (lastSection && lastSection.lastElementChild !== ph) {
+        lastSection.appendChild(ph);
+      }
+    }
+  });
+
+  const finishRowDrag = (commit) => {
+    if (!rowDragState) return;
+    const { ghost, placeholder, name } = rowDragState;
+    rowDragState = null;
+    if (commit) {
+      // 各セクション内のplaceholder位置から新しいmembers配列を構築
+      const sections = memberManageList.querySelectorAll('.member-section');
+      const newMembers = [];
+      sections.forEach((section) => {
+        const sectionRole = section.dataset.role;
+        section.querySelectorAll('.member-manage-row').forEach((el) => {
+          const memberName = el === placeholder ? name : el.dataset.name;
+          if (!memberName) return;
+          newMembers.push(memberName);
+          // ドロップ先セクションの役割を当該メンバーに反映
+          if (el === placeholder) {
+            const targetRole = sectionRole === 'staff' ? 'staff' : 'player';
+            if (getRole(name) !== targetRole) {
+              roles = setRole(name, targetRole);
+            }
+          }
+        });
+      });
+      // 既存の他メンバーが漏れないようにmaintain
+      for (const m of members) {
+        if (!newMembers.includes(m)) newMembers.push(m);
+      }
+      members = newMembers;
+      saveMembers(members);
+    }
+    if (ghost) ghost.remove();
+    if (placeholder) placeholder.remove();
+    renderMemberManageList();
+  };
+
+  handle.addEventListener('pointerup', (e) => {
+    if (!rowDragState || rowDragState.pointerId !== e.pointerId) return;
+    finishRowDrag(true);
+  });
+
+  handle.addEventListener('pointercancel', (e) => {
+    if (!rowDragState || rowDragState.pointerId !== e.pointerId) return;
+    finishRowDrag(false);
+  });
+}
+
 // === まとめて再描画 ===
 
 function renderAll() {
@@ -462,12 +598,17 @@ settingsModal.addEventListener('click', (e) => {
 });
 
 function renderMemberManageList() {
-  memberManageList.innerHTML = members.map((name) => {
+  // プレイヤー / 運営 でグループ化（各グループ内ではmembers配列の順序を維持）
+  const playerNames = members.filter((m) => getRole(m) !== 'staff');
+  const staffNames = members.filter((m) => getRole(m) === 'staff');
+
+  const renderRow = (name) => {
     const isHidden = hiddenMembers.includes(name);
     const role = getRole(name);
     const roleLabel = role === 'staff' ? '運営' : 'プレイヤー';
     return `
-      <div class="member-manage-row ${isHidden ? 'hidden-member' : ''}">
+      <div class="member-manage-row ${isHidden ? 'hidden-member' : ''}" data-name="${name}">
+        <span class="drag-handle" title="ドラッグで並び替え">⠿</span>
         <span class="member-manage-name" data-role="${role}">${name}</span>
         <div class="member-manage-actions">
           <button class="btn-toggle-role" data-name="${name}" data-role="${role}">${roleLabel}</button>
@@ -476,7 +617,23 @@ function renderMemberManageList() {
         </div>
       </div>
     `;
-  }).join('');
+  };
+
+  const sectionHTML = (title, names, roleClass) => `
+    <div class="member-section" data-role="${roleClass}">
+      <div class="member-section-title">${title}（${names.length}）</div>
+      ${names.map(renderRow).join('') || '<div class="member-section-empty">なし</div>'}
+    </div>
+  `;
+
+  memberManageList.innerHTML =
+    sectionHTML('プレイヤー', playerNames, 'player') +
+    sectionHTML('運営スタッフ', staffNames, 'staff');
+
+  // ドラッグハンドルで並び替え
+  memberManageList.querySelectorAll('.member-manage-row').forEach((row) => {
+    setupRowReorder(row);
+  });
 
   memberManageList.querySelectorAll('.btn-toggle-role').forEach((btn) => {
     btn.addEventListener('click', () => {
