@@ -1,4 +1,4 @@
-import { loadMembers, saveMembers, addMember, removeMember, loadInputData, saveInputData, loadHidden, saveHidden, loadRoles, setRole, loadHideStaff, saveHideStaff, exportBackup, importBackup } from './store.js';
+import { loadMembers, saveMembers, addMember, removeMember, loadInputData, saveInputData, loadHidden, saveHidden, loadRoles, setRole, loadDefaultCats, setDefaultCat, loadHideStaff, saveHideStaff, exportBackup, importBackup } from './store.js';
 import { CATEGORIES, generateReport } from './template.js';
 
 // 状態
@@ -6,10 +6,15 @@ let assignments = {};  // { categoryKey: [名前, ...] }
 let members = loadMembers();
 let hiddenMembers = loadHidden();
 let roles = loadRoles();
+let defaultCats = loadDefaultCats();
 let hideStaff = loadHideStaff();
 
 function getRole(name) {
   return roles[name] === 'staff' ? 'staff' : 'player';
+}
+
+function getDefaultCatKey(name) {
+  return defaultCats[name] === 'slide' ? 'slide' : 'open';
 }
 
 // DOM要素
@@ -51,22 +56,23 @@ function visibleMembers() {
   return members.filter((m) => !hiddenMembers.includes(m));
 }
 
-// === オープンメンバーをデフォルトとする正規化 ===
-// どの排他カテゴリ（multi以外、open以外）にも属さない可視メンバーを open に追加する
-function ensureInOpen(name) {
+// === デフォルトカテゴリへの正規化 ===
+// どの排他カテゴリ（multi以外）にも属さない可視メンバーをデフォルト（通常 open / 一部 slide）へ追加
+function ensureInDefault(name) {
   if (!visibleMembers().includes(name)) return;
   for (const cat of nameCategories) {
-    if (cat.multi || cat.key === 'open') continue;
+    if (cat.multi) continue;
     if (assignments[cat.key].includes(name)) return;
   }
-  if (!assignments.open.includes(name)) {
-    assignments.open.push(name);
+  const defaultKey = getDefaultCatKey(name);
+  if (!assignments[defaultKey].includes(name)) {
+    assignments[defaultKey].push(name);
   }
 }
 
-function normalizeAllOpen() {
+function normalizeAllDefault() {
   for (const name of visibleMembers()) {
-    ensureInOpen(name);
+    ensureInDefault(name);
   }
   // 非表示・削除済みメンバーは全カテゴリから除外
   for (const cat of nameCategories) {
@@ -148,7 +154,7 @@ function moveToCategory(name, fromCatKey, toCatKey) {
   if (!assignments[toCatKey].includes(name)) {
     assignments[toCatKey].push(name);
   }
-  ensureInOpen(name);
+  ensureInDefault(name);
 }
 
 // === チェックボックスピッカー（カテゴリタップで開く） ===
@@ -202,7 +208,7 @@ function openCheckboxPicker(catKey) {
         }
       } else {
         assignments[catKey] = assignments[catKey].filter((n) => n !== name);
-        ensureInOpen(name);
+        ensureInDefault(name);
       }
       renderAssignCategories();
       updatePreview();
@@ -366,7 +372,7 @@ function setupChipDragAndTap(chip, fromCatKey, name) {
       openMoveDialog(tapName, 'open');
     } else {
       assignments[tapFrom] = assignments[tapFrom].filter((n) => n !== tapName);
-      ensureInOpen(tapName);
+      ensureInDefault(tapName);
       renderAll();
     }
   };
@@ -607,11 +613,14 @@ function renderMemberManageList() {
     const isHidden = hiddenMembers.includes(name);
     const role = getRole(name);
     const roleLabel = role === 'staff' ? '運営' : 'プレイヤー';
+    const defaultKey = getDefaultCatKey(name);
+    const defaultLabel = defaultKey === 'slide' ? 'スライド' : 'オープン';
     return `
       <div class="member-manage-row ${isHidden ? 'hidden-member' : ''}" data-name="${name}">
         <span class="drag-handle" title="ドラッグで並び替え">⠿</span>
         <span class="member-manage-name" data-role="${role}">${name}</span>
         <div class="member-manage-actions">
+          <button class="btn-toggle-default" data-name="${name}" data-default="${defaultKey}" title="デフォルト所属">${defaultLabel}</button>
           <button class="btn-toggle-role" data-name="${name}" data-role="${role}">${roleLabel}</button>
           <button class="btn-toggle-vis" data-name="${name}">${isHidden ? '表示' : '非表示'}</button>
           <button class="btn-remove" data-name="${name}">削除</button>
@@ -645,6 +654,23 @@ function renderMemberManageList() {
     });
   });
 
+  memberManageList.querySelectorAll('.btn-toggle-default').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.name;
+      const oldDefault = getDefaultCatKey(name);
+      const newDefault = oldDefault === 'slide' ? 'open' : 'slide';
+      defaultCats = setDefaultCat(name, newDefault);
+      // 現在 旧デフォルトに居るなら 新デフォルトへ移動
+      if (assignments[oldDefault] && assignments[oldDefault].includes(name)) {
+        assignments[oldDefault] = assignments[oldDefault].filter((n) => n !== name);
+        if (!assignments[newDefault].includes(name)) {
+          assignments[newDefault].push(name);
+        }
+      }
+      renderMemberManageList();
+    });
+  });
+
   memberManageList.querySelectorAll('.btn-remove').forEach((btn) => {
     btn.addEventListener('click', () => {
       const name = btn.dataset.name;
@@ -653,6 +679,7 @@ function renderMemberManageList() {
       hiddenMembers = hiddenMembers.filter((n) => n !== name);
       saveHidden(hiddenMembers);
       roles = setRole(name, 'player');
+      defaultCats = setDefaultCat(name, 'open');
       for (const key of Object.keys(assignments)) {
         assignments[key] = assignments[key].filter((n) => n !== name);
       }
@@ -666,7 +693,7 @@ function renderMemberManageList() {
       if (hiddenMembers.includes(name)) {
         hiddenMembers = hiddenMembers.filter((n) => n !== name);
         saveHidden(hiddenMembers);
-        ensureInOpen(name);
+        ensureInDefault(name);
       } else {
         hiddenMembers.push(name);
         for (const key of Object.keys(assignments)) {
@@ -684,7 +711,7 @@ function doAddMember() {
   if (!name) return;
   members = addMember(name);
   newMemberName.value = '';
-  ensureInOpen(name);
+  ensureInDefault(name);
   renderMemberManageList();
 }
 
@@ -751,5 +778,5 @@ if (saved) {
   }
 }
 
-normalizeAllOpen();
+normalizeAllDefault();
 renderAll();

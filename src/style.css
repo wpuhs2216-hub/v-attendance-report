@@ -672,6 +672,8 @@ input[type="date"]:focus {
 .member-manage-actions {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .btn-toggle-vis {
@@ -685,12 +687,25 @@ input[type="date"]:focus {
   font-family: inherit;
 }
 
-.btn-toggle-role {
+.btn-toggle-role,
+.btn-toggle-default {
   border-radius: 4px;
   padding: 4px 10px;
   font-size: 12px;
   cursor: pointer;
   font-family: inherit;
+}
+
+.btn-toggle-default[data-default="open"] {
+  background: rgba(212, 175, 55, 0.15);
+  color: #d4af37;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.btn-toggle-default[data-default="slide"] {
+  background: rgba(255, 150, 100, 0.18);
+  color: #ff9f70;
+  border: 1px solid rgba(255, 150, 100, 0.4);
 }
 
 .btn-toggle-role[data-role="player"] {

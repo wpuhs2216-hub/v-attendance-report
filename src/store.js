@@ -37,6 +37,29 @@ export function removeMember(name) {
   return members;
 }
 
+// メンバーのデフォルトカテゴリ（未設定なら open）
+const DEFAULT_CATS_KEY = 'v-report-default-cats';
+
+export function loadDefaultCats() {
+  const raw = localStorage.getItem(DEFAULT_CATS_KEY);
+  return raw ? JSON.parse(raw) : {};
+}
+
+export function saveDefaultCats(map) {
+  localStorage.setItem(DEFAULT_CATS_KEY, JSON.stringify(map));
+}
+
+export function setDefaultCat(name, cat) {
+  const map = loadDefaultCats();
+  if (cat === 'slide') {
+    map[name] = 'slide';
+  } else {
+    delete map[name];
+  }
+  saveDefaultCats(map);
+  return map;
+}
+
 // 運営スタッフをメイン画面で非表示にする設定
 const HIDE_STAFF_KEY = 'v-report-hide-staff';
 
@@ -113,6 +136,7 @@ export function exportBackup() {
     members: loadMembers(),
     hidden: loadHidden(),
     roles: loadRoles(),
+    defaultCats: loadDefaultCats(),
     hideStaff: loadHideStaff(),
     input: loadInputData(),
   };
@@ -137,6 +161,13 @@ export function importBackup(data) {
       if (typeof k === 'string' && v === 'staff') cleaned[k] = 'staff';
     }
     saveRoles(cleaned);
+  }
+  if (data.defaultCats && typeof data.defaultCats === 'object') {
+    const cleaned = {};
+    for (const [k, v] of Object.entries(data.defaultCats)) {
+      if (typeof k === 'string' && v === 'slide') cleaned[k] = 'slide';
+    }
+    saveDefaultCats(cleaned);
   }
   if (typeof data.hideStaff === 'boolean') {
     saveHideStaff(data.hideStaff);
