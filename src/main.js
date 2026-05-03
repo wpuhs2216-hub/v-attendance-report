@@ -1,4 +1,4 @@
-import { loadMembers, saveMembers, addMember, removeMember, loadInputData, saveInputData, loadHidden, saveHidden, loadRoles, setRole, exportBackup, importBackup } from './store.js';
+import { loadMembers, saveMembers, addMember, removeMember, loadInputData, saveInputData, loadHidden, saveHidden, loadRoles, setRole, loadHideStaff, saveHideStaff, exportBackup, importBackup } from './store.js';
 import { CATEGORIES, generateReport } from './template.js';
 
 // 状態
@@ -6,6 +6,7 @@ let assignments = {};  // { categoryKey: [名前, ...] }
 let members = loadMembers();
 let hiddenMembers = loadHidden();
 let roles = loadRoles();
+let hideStaff = loadHideStaff();
 
 function getRole(name) {
   return roles[name] === 'staff' ? 'staff' : 'player';
@@ -32,6 +33,7 @@ const btnCloseSettings = document.getElementById('btn-close-settings');
 const btnBackup = document.getElementById('btn-backup');
 const btnRestore = document.getElementById('btn-restore');
 const restoreFile = document.getElementById('restore-file');
+const hideStaffToggle = document.getElementById('hide-staff-toggle');
 
 // 初期化: 今日の日付をセット（ローカルタイムゾーン）
 const today = new Date();
@@ -223,13 +225,21 @@ function findExclusiveCat(name, excludeKey) {
 function renderAssignCategories() {
   assignCategories.innerHTML = nameCategories.map((cat) => {
     const names = assignments[cat.key];
-    const chips = names.map((n) => `<span class="assigned-chip" data-cat="${cat.key}" data-name="${n}" data-role="${getRole(n)}">${n}</span>`).join('');
+    const chipNames = hideStaff ? names.filter((n) => getRole(n) !== 'staff') : names;
+    const chips = chipNames.map((n) => `<span class="assigned-chip" data-cat="${cat.key}" data-name="${n}" data-role="${getRole(n)}">${n}</span>`).join('');
+    let breakdown = '';
+    if (cat.key === 'open') {
+      const playerCount = names.filter((n) => getRole(n) !== 'staff').length;
+      const staffCount = names.filter((n) => getRole(n) === 'staff').length;
+      breakdown = `<div class="assign-cat-breakdown"><span class="bd-player">プレイヤー ${playerCount}人</span><span class="bd-sep">＋</span><span class="bd-staff">運営 ${staffCount}人</span></div>`;
+    }
     return `
       <div class="assign-cat" data-key="${cat.key}">
         <div class="assign-cat-header">
           <span>${cat.label}</span>
           <span class="count">${names.length}人</span>
         </div>
+        ${breakdown}
         <div class="assign-cat-names">${chips}</div>
       </div>
     `;
@@ -429,8 +439,14 @@ reportDate.addEventListener('change', updatePreview);
 // === 設定モーダル ===
 
 btnSettings.addEventListener('click', () => {
+  hideStaffToggle.checked = hideStaff;
   renderMemberManageList();
   settingsModal.classList.add('active');
+});
+
+hideStaffToggle.addEventListener('change', () => {
+  hideStaff = hideStaffToggle.checked;
+  saveHideStaff(hideStaff);
 });
 
 btnCloseSettings.addEventListener('click', () => {
