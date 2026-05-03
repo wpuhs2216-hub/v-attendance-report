@@ -37,6 +37,17 @@ export function removeMember(name) {
   return members;
 }
 
+// 運営スタッフをメイン画面で非表示にする設定
+const HIDE_STAFF_KEY = 'v-report-hide-staff';
+
+export function loadHideStaff() {
+  return localStorage.getItem(HIDE_STAFF_KEY) === 'true';
+}
+
+export function saveHideStaff(val) {
+  localStorage.setItem(HIDE_STAFF_KEY, val ? 'true' : 'false');
+}
+
 // メンバー非表示リスト
 const HIDDEN_KEY = 'v-report-hidden';
 
@@ -102,6 +113,7 @@ export function exportBackup() {
     members: loadMembers(),
     hidden: loadHidden(),
     roles: loadRoles(),
+    hideStaff: loadHideStaff(),
     input: loadInputData(),
   };
 }
@@ -125,6 +137,9 @@ export function importBackup(data) {
       if (typeof k === 'string' && v === 'staff') cleaned[k] = 'staff';
     }
     saveRoles(cleaned);
+  }
+  if (typeof data.hideStaff === 'boolean') {
+    saveHideStaff(data.hideStaff);
   }
   if (data.input && typeof data.input === 'object') {
     saveInputData(data.input);

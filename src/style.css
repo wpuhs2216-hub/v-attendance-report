@@ -198,6 +198,27 @@ input[type="date"]:focus {
   font-weight: 700;
 }
 
+.assign-cat-breakdown {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 6px;
+}
+
+.assign-cat-breakdown .bd-player {
+  color: #8f8;
+}
+
+.assign-cat-breakdown .bd-staff {
+  color: #8ab4ff;
+}
+
+.assign-cat-breakdown .bd-sep {
+  color: #555;
+}
+
 .assign-cat-names {
   display: flex;
   flex-wrap: wrap;
@@ -471,6 +492,39 @@ input[type="date"]:focus {
   font-size: 16px;
   color: #d4af37;
   margin-bottom: 16px;
+}
+
+.modal-subtitle {
+  font-size: 13px;
+  color: #aaa;
+  margin: 16px 0 8px;
+  letter-spacing: 1px;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-row span {
+  font-size: 13px;
+  color: #ccc;
+}
+
+.toggle-row input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: #d4af37;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 .member-add {
