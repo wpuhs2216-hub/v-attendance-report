@@ -118,11 +118,23 @@ catSelect.addEventListener('click', (e) => {
   if (e.target === catSelect) closeCatSelect();
 });
 
+// === デフォルトカテゴリ（open/slide）間の移動禁止判定 ===
+const DEFAULT_PAIR = new Set(['open', 'slide']);
+function isDefaultPairMove(fromKey, toKey) {
+  return DEFAULT_PAIR.has(fromKey) && DEFAULT_PAIR.has(toKey);
+}
+
 // === 移動ダイアログ（チップタップで開く） ===
 
 function openMoveDialog(name, fromCatKey) {
   catSelectName.textContent = `「${name}」を移動`;
-  const targetCats = nameCategories.filter((c) => c.key !== fromCatKey);
+  const fromIsDefault = DEFAULT_PAIR.has(fromCatKey);
+  const targetCats = nameCategories.filter((c) => {
+    if (c.key === fromCatKey) return false;
+    // open/slide間の移動は設定経由のみ
+    if (fromIsDefault && DEFAULT_PAIR.has(c.key)) return false;
+    return true;
+  });
   catSelectButtons.innerHTML = targetCats.map((cat) => {
     const tag = cat.multi ? '＋' : '→';
     return `<button class="cat-select-btn" data-key="${cat.key}">${tag} ${cat.label}</button>`;
@@ -140,6 +152,7 @@ function openMoveDialog(name, fromCatKey) {
 // === カテゴリ間移動 ===
 // fromCatKey が null なら新規追加、from→to でカテゴリ移動
 function moveToCategory(name, fromCatKey, toCatKey) {
+  if (isDefaultPairMove(fromCatKey, toCatKey)) return;
   const toCat = nameCategories.find((c) => c.key === toCatKey);
   if (!toCat) return;
   if (fromCatKey && fromCatKey !== toCatKey && assignments[fromCatKey]) {
@@ -273,11 +286,11 @@ function renderAssignCategories() {
     `;
   }).join('');
 
-  // カテゴリ行タップでチェックボックスピッカーを開く（オープンメンバーは除外）
+  // カテゴリ行タップでチェックボックスピッカーを開く（オープン・スライドは除外）
   assignCategories.querySelectorAll('.assign-cat-header').forEach((header) => {
     header.addEventListener('click', () => {
       const catKey = header.closest('.assign-cat').dataset.key;
-      if (catKey === 'open') return;
+      if (DEFAULT_PAIR.has(catKey)) return;
       openCheckboxPicker(catKey);
     });
   });
@@ -337,14 +350,19 @@ function setupChipDragAndTap(chip, fromCatKey, name) {
     dragState.ghost.style.visibility = 'hidden';
     const elUnder = document.elementFromPoint(e.clientX, e.clientY);
     dragState.ghost.style.visibility = '';
-    const targetEl = elUnder ? elUnder.closest('.assign-cat') : null;
-    if (dragState.lastTarget && dragState.lastTarget !== targetEl) {
+    const candidateEl = elUnder ? elUnder.closest('.assign-cat') : null;
+    const candidateKey = candidateEl ? candidateEl.dataset.key : null;
+    // open ↔ slide間ドロップは無効
+    const validTarget = candidateKey && isDefaultPairMove(dragState.fromCatKey, candidateKey)
+      ? null
+      : candidateEl;
+    if (dragState.lastTarget && dragState.lastTarget !== validTarget) {
       dragState.lastTarget.classList.remove('drop-target');
     }
-    if (targetEl && targetEl !== dragState.lastTarget) {
-      targetEl.classList.add('drop-target');
+    if (validTarget && validTarget !== dragState.lastTarget) {
+      validTarget.classList.add('drop-target');
     }
-    dragState.lastTarget = targetEl;
+    dragState.lastTarget = validTarget;
   });
 
   const finishDrag = (commit) => {
@@ -368,8 +386,8 @@ function setupChipDragAndTap(chip, fromCatKey, name) {
     const tapName = dragState.name;
     const tapFrom = dragState.fromCatKey;
     dragState = null;
-    if (tapFrom === 'open') {
-      openMoveDialog(tapName, 'open');
+    if (DEFAULT_PAIR.has(tapFrom)) {
+      openMoveDialog(tapName, tapFrom);
     } else {
       assignments[tapFrom] = assignments[tapFrom].filter((n) => n !== tapName);
       ensureInDefault(tapName);
