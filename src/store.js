@@ -2,13 +2,19 @@ const MEMBERS_KEY = 'v-report-members';
 
 const DEFAULT_MEMBERS = [
   '祐也', '迅', 'ちんすこう', 'クロム',
-  '雅', '寿里', 'はると', 'スバル', '狼恋',
+  '雅', '寿里',
   'TO-YA', 'ルイ', '湊', '宗', '音羽', 'ライト',
-  'とあ', '紫月', 'けんしん',
+  '紫月', '蓮', '天馬', '幸夏', '漢', 'カイ',
 ];
 
 // 初期で運営スタッフとして登録するメンバー
-const DEFAULT_STAFF = ['TO-YA', 'ルイ', '湊', '宗', '狼恋', '音羽', 'ライト'];
+const DEFAULT_STAFF = ['TO-YA', 'ルイ', '湊', '宗', 'ライト', '音羽', 'ちんすこう'];
+
+// 初期でメイン画面に出さないメンバー
+const DEFAULT_HIDDEN = ['音羽', 'ライト'];
+
+// 運営スタッフを名前の表示から外す初期設定
+const DEFAULT_HIDE_STAFF = true;
 
 export function loadMembers() {
   const raw = localStorage.getItem(MEMBERS_KEY);
@@ -64,7 +70,12 @@ export function setDefaultCat(name, cat) {
 const HIDE_STAFF_KEY = 'v-report-hide-staff';
 
 export function loadHideStaff() {
-  return localStorage.getItem(HIDE_STAFF_KEY) === 'true';
+  const raw = localStorage.getItem(HIDE_STAFF_KEY);
+  if (raw === null) {
+    saveHideStaff(DEFAULT_HIDE_STAFF);
+    return DEFAULT_HIDE_STAFF;
+  }
+  return raw === 'true';
 }
 
 export function saveHideStaff(val) {
@@ -76,7 +87,11 @@ const HIDDEN_KEY = 'v-report-hidden';
 
 export function loadHidden() {
   const raw = localStorage.getItem(HIDDEN_KEY);
-  return raw ? JSON.parse(raw) : [];
+  if (!raw) {
+    saveHidden(DEFAULT_HIDDEN);
+    return [...DEFAULT_HIDDEN];
+  }
+  return JSON.parse(raw);
 }
 
 export function saveHidden(hidden) {
