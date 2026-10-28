@@ -16,6 +16,49 @@ const DEFAULT_HIDDEN = ['音羽', 'ライト'];
 // 運営スタッフを名前の表示から外す初期設定
 const DEFAULT_HIDE_STAFF = true;
 
+// 既定の名簿の版。ここを上げると、古い端末の名簿も新しい既定へ入れ替わる
+const DEFAULTS_VERSION = 2;
+const DEFAULTS_VERSION_KEY = 'v-report-defaults-version';
+// 入れ替える前の中身をしまっておく場所（取り戻せるように）
+const RESCUE_KEY = 'v-report-rescue';
+
+// 起動時に一度だけ呼ぶ。古い版の端末なら既定の名簿へ入れ替える
+export function ensureDefaults() {
+  const raw = localStorage.getItem(DEFAULTS_VERSION_KEY);
+  const current = raw ? Number(raw) : 0;
+  if (current >= DEFAULTS_VERSION) return false;
+
+  const hadData = localStorage.getItem(MEMBERS_KEY) !== null;
+  if (hadData) {
+    // 入れ替える前の中身を控えとして残す
+    localStorage.setItem(RESCUE_KEY, JSON.stringify({
+      savedAt: new Date().toISOString(),
+      fromVersion: current,
+      members: localStorage.getItem(MEMBERS_KEY),
+      hidden: localStorage.getItem(HIDDEN_KEY),
+      roles: localStorage.getItem(ROLES_KEY),
+      defaultCats: localStorage.getItem(DEFAULT_CATS_KEY),
+      hideStaff: localStorage.getItem(HIDE_STAFF_KEY),
+      input: localStorage.getItem(INPUT_KEY),
+    }));
+    applyBuiltinDefaults();
+  }
+
+  localStorage.setItem(DEFAULTS_VERSION_KEY, String(DEFAULTS_VERSION));
+  return hadData;
+}
+
+// 名簿・運営スタッフ・非表示設定を既定へ戻す（その日の入力は消さない）
+export function applyBuiltinDefaults() {
+  saveMembers([...DEFAULT_MEMBERS]);
+  saveHidden([...DEFAULT_HIDDEN]);
+  const roles = {};
+  for (const name of DEFAULT_STAFF) roles[name] = 'staff';
+  saveRoles(roles);
+  saveDefaultCats({});
+  saveHideStaff(DEFAULT_HIDE_STAFF);
+}
+
 export function loadMembers() {
   const raw = localStorage.getItem(MEMBERS_KEY);
   if (!raw) {

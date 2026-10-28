@@ -1,5 +1,8 @@
-import { loadMembers, saveMembers, addMember, removeMember, loadInputData, saveInputData, loadHidden, saveHidden, loadRoles, setRole, loadDefaultCats, setDefaultCat, loadHideStaff, saveHideStaff, exportBackup, importBackup } from './store.js';
+import { loadMembers, saveMembers, addMember, removeMember, loadInputData, saveInputData, loadHidden, saveHidden, loadRoles, setRole, loadDefaultCats, setDefaultCat, loadHideStaff, saveHideStaff, exportBackup, importBackup, ensureDefaults } from './store.js';
 import { CATEGORIES, generateReport } from './template.js';
+
+// 古い版の端末なら、名簿を新しい既定へ入れ替える（起動時に一度だけ）
+const defaultsWereUpdated = ensureDefaults();
 
 // 状態
 let assignments = {};  // { categoryKey: [名前, ...] }
@@ -781,6 +784,11 @@ restoreFile.addEventListener('change', async () => {
 });
 
 // === 初期描画 ===
+
+// 名簿を入れ替えたら一度だけ知らせる
+if (defaultsWereUpdated) {
+  setTimeout(() => alert('キャスト一覧を最新の名簿に更新しました。'), 300);
+}
 
 renderNumberInputs();
 
