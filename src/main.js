@@ -176,9 +176,9 @@ function openCheckboxPicker(catKey) {
   const cat = nameCategories.find((c) => c.key === catKey);
   const currentNames = assignments[catKey];
 
-  // 同伴・スライドは運営スタッフを選択肢から除外
+  // スライドは運営スタッフを選択肢から除外（同伴は運営スタッフも選べる）
   const baseAvailable = visibleMembers();
-  const playerOnlyCats = new Set(['douhan', 'slide']);
+  const playerOnlyCats = new Set(['slide']);
   const available = playerOnlyCats.has(catKey)
     ? baseAvailable.filter((n) => getRole(n) !== 'staff')
     : baseAvailable;
@@ -246,6 +246,9 @@ function findExclusiveCat(name, excludeKey) {
   return null;
 }
 
+// 運営スタッフを隠す設定でも名前を表示するカテゴリ
+const STAFF_VISIBLE_CATS = new Set(['douhan']);
+
 // プレイヤー → 運営 の順でソート（メンバー配列の順序を保つ）
 function sortByRole(names) {
   const players = names.filter((n) => getRole(n) !== 'staff');
@@ -258,7 +261,10 @@ function sortByRole(names) {
 function renderAssignCategories() {
   assignCategories.innerHTML = nameCategories.map((cat) => {
     const names = assignments[cat.key];
-    const filteredNames = hideStaff ? names.filter((n) => getRole(n) !== 'staff') : names;
+    // 同伴は運営スタッフも名前を表示する（名前を出さない設定の対象外）
+    const filteredNames = (hideStaff && !STAFF_VISIBLE_CATS.has(cat.key))
+      ? names.filter((n) => getRole(n) !== 'staff')
+      : names;
     // メンバー配列の順序を維持しつつプレイヤー→運営でグループ化
     const memberOrder = new Map(members.map((m, i) => [m, i]));
     const sortedNames = [...filteredNames].sort((a, b) => {
